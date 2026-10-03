@@ -1,0 +1,876 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Заброшенная лаборатория — побег</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Sans+Condensed:wght@400;600&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box}
+  :root{
+    --ink:#0a1310; --deep:#0f1c17; --panel:#152822; --line:#2c4a3f;
+    --glow:#9dffb5; --hazard:#e3b52b; --rust:#a4502d; --chalk:#dfe8e2; --muted:#8fb0a0;
+    color-scheme:dark;
+    padding-top:env(safe-area-inset-top,0px);
+    padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+  body{height:100%;margin:0;background:var(--ink);color:var(--chalk);
+       font-family:"Fira Sans Condensed","Arial Narrow",system-ui,sans-serif;font-size:16px}
+  #app{height:100%;display:flex;flex-direction:column;gap:10px;max-width:1120px;margin:0 auto;padding:10px 14px}
+  header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  h1{margin:0;font-weight:600;font-size:23px;letter-spacing:.3px}
+  h1 small{display:block;font-weight:400;font-size:14px;color:var(--muted);margin-top:2px}
+  .tools{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{background:var(--panel);color:var(--chalk);border:1px solid var(--line);border-radius:4px;
+       padding:8px 13px;font:600 15px "Fira Sans Condensed",system-ui,sans-serif;cursor:pointer}
+  .btn:hover{border-color:var(--glow)}
+  .btn.primary{background:var(--hazard);color:#1a1405;border-color:var(--hazard)}
+  :focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+
+  #stageWrap{position:relative;flex:1;min-height:0;border:1px solid var(--line);border-radius:6px;
+             background:#050a08;overflow:hidden;display:flex}
+  #stage{width:100%;height:100%;display:block}
+  .arrow{position:absolute;top:50%;transform:translateY(-50%);width:40px;height:66px;border-radius:4px;
+         background:rgba(10,19,16,.75);border:1px solid var(--line);color:var(--chalk);font-size:26px;cursor:pointer}
+  .arrow:hover{border-color:var(--glow);color:var(--glow)}
+  #prev{left:8px} #next{right:8px}
+
+  .hs{fill:rgba(0,0,0,0);cursor:pointer;pointer-events:all}
+  .hs:hover,.hs:focus-visible{stroke:var(--glow);stroke-width:2;stroke-dasharray:6 5;fill:rgba(157,255,181,.08);outline:none}
+  .flash .hs{animation:pulse .7s ease-in-out 3}
+  @keyframes pulse{50%{stroke:var(--glow);stroke-width:3;stroke-dasharray:6 5;fill:rgba(157,255,181,.2)}}
+  .flame{transform-box:fill-box;transform-origin:50% 100%;animation:flick .45s ease-in-out infinite alternate}
+  @keyframes flick{from{transform:scaleY(.9) skewX(-3deg)}to{transform:scaleY(1.07) skewX(3deg)}}
+
+  #log{padding:10px 14px;border-left:4px solid var(--hazard);background:var(--deep);border-radius:0 6px 6px 0;
+       font-family:"Special Elite","Courier New",monospace;font-size:15px;line-height:1.45;min-height:48px}
+  #dock{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center}
+  #tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+  .room{font-weight:600;color:var(--glow);margin-right:6px;font-size:17px}
+  .tab{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:4px;padding:6px 14px;
+       font:600 14px "Fira Sans Condensed",system-ui,sans-serif;cursor:pointer}
+  .tab[aria-current="true"]{background:var(--glow);border-color:var(--glow);color:#06210f}
+  #inv{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+  .slot{width:50px;height:50px;border-radius:4px;border:1px dashed var(--line);background:var(--deep);
+        display:grid;place-items:center;padding:0;cursor:pointer}
+  .slot.full{border-style:solid}
+  .slot[aria-pressed="true"]{border:2px solid var(--hazard);background:#1d3329}
+  .slot svg{width:38px;height:38px}
+  .slot:disabled{cursor:default}
+
+  #modal{position:fixed;inset:0;background:rgba(3,8,6,.82);display:none;place-items:center;z-index:10;padding:16px}
+  #modal.open{display:grid}
+  .card{width:min(430px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:20px}
+  .card h2{margin:0 0 6px;font-size:21px;font-weight:600}
+  .card p{margin:0 0 12px;color:var(--muted);line-height:1.45}
+  .card .row{display:flex;gap:10px;justify-content:flex-end;margin-top:14px}
+  .dials{display:flex;gap:10px;justify-content:center;margin:16px 0 4px}
+  .dial{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .dial button{width:56px;height:32px;border-radius:4px;background:var(--deep);border:1px solid var(--line);color:var(--chalk);font-size:15px;cursor:pointer}
+  .dial button:hover{border-color:var(--glow)}
+  .dial output{width:56px;height:68px;display:grid;place-items:center;background:#050c09;border:1px solid var(--line);
+               border-radius:4px;font:400 36px "Special Elite",monospace;color:var(--glow)}
+  .keys{display:grid;grid-template-columns:repeat(3,64px);gap:8px;justify-content:center;margin:10px 0}
+  .keys button{height:50px;border-radius:4px;background:var(--deep);border:1px solid var(--line);color:var(--chalk);font:600 20px "Fira Sans Condensed",sans-serif;cursor:pointer}
+  .keys button:hover{border-color:var(--glow)}
+  .screen{width:216px;height:50px;margin:0 auto;display:grid;place-items:center;background:#050c09;border:1px solid var(--line);
+          border-radius:4px;font:400 28px "Special Elite",monospace;color:var(--glow);letter-spacing:8px}
+  .symrow{display:flex;gap:10px;justify-content:center;margin:14px 0}
+  .sym{width:68px;height:68px;border-radius:6px;background:#050c09;border:1px solid var(--line);cursor:pointer;display:grid;place-items:center;padding:0}
+  .sym:hover{border-color:var(--glow)}
+  .drops{display:flex;gap:12px;justify-content:center;margin:10px 0}
+  .dbtn{display:flex;flex-direction:column;align-items:center;gap:6px;background:none;border:0;color:var(--chalk);font:600 14px "Fira Sans Condensed",sans-serif;cursor:pointer}
+  .dbtn i{width:46px;height:46px;border-radius:50% 50% 50% 8%;transform:rotate(-45deg);display:block;border:2px solid rgba(255,255,255,.3)}
+  .dbtn:hover i{border-color:var(--chalk)}
+  .sws{display:flex;gap:10px;justify-content:center;margin:14px 0}
+  .sw{width:70px;padding:10px 0;border-radius:4px;background:var(--deep);border:1px solid var(--line);color:var(--chalk);
+      font:600 14px "Fira Sans Condensed",sans-serif;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .sw[aria-pressed="true"]{border-color:var(--hazard);background:#2b2a14}
+  .sw b{font-size:22px;font-weight:400}
+  .status{min-height:22px;text-align:center;font-size:15px;color:var(--muted);margin-top:8px}
+  .shake{animation:shake .35s}
+  @keyframes shake{25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+  .note{font-family:"Special Elite","Courier New",monospace;font-size:15px;line-height:1.6;color:var(--chalk);
+        border-left:3px solid var(--glow);padding-left:14px;margin:12px 0}
+  @media (max-width:700px){
+    #dock{grid-template-columns:1fr}
+    #inv{justify-content:flex-start}
+    .slot{width:42px;height:42px}.slot svg{width:32px;height:32px}
+    h1{font-size:19px}
+  }
+  @media (prefers-reduced-motion:reduce){.flash .hs,.shake,.flame{animation:none}}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>Заброшенная лаборатория<small>НИИ Биосинтеза. Три комнаты, одиннадцать предметов. Выберите предмет и нажмите на то, к чему хотите его применить.</small></h1>
+    <div class="tools">
+      <button class="btn" id="flashBtn" type="button">Подсветить</button>
+      <button class="btn" id="hintBtn" type="button">Подсказка</button>
+      <button class="btn" id="resetBtn" type="button">Начать заново</button>
+    </div>
+  </header>
+
+  <div id="stageWrap">
+    <svg id="stage" viewBox="0 0 800 450" preserveAspectRatio="xMidYMid meet" role="group" aria-label="Комната"></svg>
+    <button class="arrow" id="prev" type="button" aria-label="Повернуть налево">&#8249;</button>
+    <button class="arrow" id="next" type="button" aria-label="Повернуть направо">&#8250;</button>
+  </div>
+
+  <div id="log" role="status" aria-live="polite"></div>
+
+  <div id="dock">
+    <div id="tabs" role="group" aria-label="Стены комнаты"></div>
+    <div id="inv" role="group" aria-label="Инвентарь"></div>
+  </div>
+</div>
+
+<div id="modal" role="dialog" aria-modal="true"><div class="card" id="card"></div></div>
+
+<script>
+(function(){
+  const $ = s => document.querySelector(s);
+
+  const ROOMS = [
+    {n:'Приёмная',    w:['Стойка','Доска','Двери']},
+    {n:'Лаборатория', w:['Стол','Реактивы','Сейф']},
+    {n:'Хранилище',   w:['Серверы','Камера','Щиток']}
+  ];
+  const DRAWER_CODE = [0,3,4,7];
+  const DOOR_CODE   = '729';
+  const SAFE_CODE   = [2,1,4,3];            // треугольник, круг, ромб, квадрат
+  const SW_TARGET   = [true,false,false,true];
+  const SH = ['','circle','triangle','square','diamond'];
+  const SHNAME = ['пусто','круг','треугольник','квадрат','ромб'];
+  const DROP = {blue:['#3b82f6','синий'], yellow:['#f2d13b','жёлтый'], red:['#e5483b','красный']};
+  const RECIPES = {'battery+flashlight':'uv'};
+
+  const ITEMS = {
+    battery:{name:'Батарейка', icon:'<rect x="9" y="16" width="28" height="16" rx="3" fill="#9fb0a7"/><rect x="37" y="21" width="4" height="6" fill="#9fb0a7"/><rect x="9" y="16" width="10" height="16" rx="3" fill="#e3b52b"/><path d="M26 20v8M22 24h8" stroke="#23312b" stroke-width="2"/>'},
+    flashlight:{name:'Фонарик без батарейки', icon:'<rect x="6" y="20" width="28" height="9" rx="3" fill="#5a646b"/><path d="M34 17h6l4-4v22l-4-4h-6z" fill="#8a949b"/>'},
+    uv:{name:'Ультрафиолетовый фонарик', icon:'<rect x="4" y="20" width="26" height="9" rx="3" fill="#5a646b"/><path d="M30 17h6l3-3v20l-3-3h-6z" fill="#8a949b"/><path d="M41 18l5-3M41 24h6M41 30l5 3" stroke="#b58cff" stroke-width="2.5" stroke-linecap="round"/>'},
+    extinguisher:{name:'Огнетушитель', icon:'<rect x="16" y="14" width="16" height="29" rx="6" fill="#c53434"/><rect x="21" y="8" width="7" height="7" fill="#444"/><path d="M28 10h8l4 5" stroke="#444" stroke-width="3" fill="none"/>'},
+    slide:{name:'Предметное стекло', icon:'<rect x="6" y="18" width="36" height="13" rx="1" fill="#a9d8e6" opacity=".85" stroke="#dfeff4"/><rect x="11" y="20.5" width="10" height="8" fill="#e8f6fa" opacity=".8"/>'},
+    flask:{name:'Пустая колба', icon:'<path d="M20 7h8v13l11 19q2 4-2 4H11q-4 0-2-4l11-19z" fill="#bfe3e8" opacity=".7" stroke="#e6f4f6" stroke-width="1.5"/>'},
+    magnet:{name:'Магнит', icon:'<path d="M14 10v16a10 10 0 0020 0V10" fill="none" stroke="#d63b3b" stroke-width="7"/><rect x="10.5" y="8" width="7" height="8" fill="#dfe6e2"/><rect x="30.5" y="8" width="7" height="8" fill="#dfe6e2"/>'},
+    key:{name:'Ржавый ключ', icon:'<circle cx="14" cy="24" r="7" fill="none" stroke="#b7743c" stroke-width="3.5"/><rect x="20" y="22.5" width="21" height="3.2" fill="#b7743c"/><rect x="33" y="25" width="3.2" height="6" fill="#b7743c"/><rect x="38.5" y="25" width="3.2" height="5" fill="#b7743c"/>'},
+    solution:{name:'Зелёный раствор', icon:'<path d="M20 7h8v13l11 19q2 4-2 4H11q-4 0-2-4l11-19z" fill="#bfe3e8" opacity=".5" stroke="#e6f4f6" stroke-width="1.5"/><path d="M14 35l6-11h8l6 11q1 3-2 3H16q-3 0-2-3z" fill="#4cd98a"/>'},
+    keycard:{name:'Карта-ключ', icon:'<rect x="6" y="13" width="36" height="23" rx="3" fill="#d94b4b"/><rect x="6" y="18" width="36" height="5" fill="#2a2a2a"/><rect x="11" y="27" width="13" height="4" fill="#f1f1f1" opacity=".8"/>'},
+    handle:{name:'Рукоять рубильника', icon:'<path d="M12 38L33 17" stroke="#b8c1c6" stroke-width="5" stroke-linecap="round"/><circle cx="36" cy="14" r="6" fill="#d94b4b"/><rect x="8" y="36" width="9" height="5" rx="1" fill="#6c767c"/>'}
+  };
+
+  let S;
+  function fresh(){
+    return {room:0, wall:0, inv:[], sel:null, t0:Date.now(), safe:[0,0,0,0], sw:[false,false,false,false],
+      f:{drawerA:false, flash:false, batt:false, uvMade:false, uvSeen:false, labOpen:false, ext:false,
+         slide:false, slideIn:false, microSeen:false, safeOpen:false, keycard:false, magnet:false, key:false,
+         cUnlocked:false, flask:false, green:false, thawed:false, handle:false, handleIn:false,
+         fireOut:false, monitorSeen:false, power:false, won:false}};
+  }
+
+  /* ---------- svg helpers ---------- */
+  const hs = (id,x,y,w,h,label) =>
+    `<rect class="hs" data-id="${id}" x="${x}" y="${y}" width="${w}" height="${h}" rx="3" tabindex="0" role="button" aria-label="${label}"/>`;
+
+  function shape(k,cx,cy,r,fill){
+    if(k==='circle')   return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}"/>`;
+    if(k==='triangle') return `<polygon points="${cx},${cy-r} ${cx+r},${cy+r*0.8} ${cx-r},${cy+r*0.8}" fill="${fill}"/>`;
+    if(k==='square')   return `<rect x="${cx-r*0.85}" y="${cy-r*0.85}" width="${r*1.7}" height="${r*1.7}" fill="${fill}"/>`;
+    if(k==='diamond')  return `<polygon points="${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}" fill="${fill}"/>`;
+    return '';
+  }
+  const flaskPath = (x,y,fill,s=1) =>
+    `<g transform="translate(${x} ${y}) scale(${s})"><path d="M-8 -26h16v20l16 28q3 6-3 6h-42q-6 0-3-6l16-28z" fill="${fill}" stroke="#d7eef0" stroke-width="2" opacity=".9"/></g>`;
+
+  const DEFS = `<defs>
+    <pattern id="tiles" width="40" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="40" fill="none" stroke="rgba(0,0,0,.3)" stroke-width="2"/></pattern>
+    <pattern id="chk" width="80" height="40" patternUnits="userSpaceOnUse"><rect width="40" height="20" fill="rgba(255,255,255,.045)"/><rect x="40" y="20" width="40" height="20" fill="rgba(255,255,255,.045)"/></pattern>
+    <pattern id="grate" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M0 8H16M8 0V16" stroke="rgba(0,0,0,.4)" stroke-width="2"/></pattern>
+    <pattern id="paper" width="40" height="10" patternUnits="userSpaceOnUse"><rect width="20" height="10" fill="rgba(255,255,255,.04)"/></pattern>
+    <pattern id="haz" width="24" height="24" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="12" height="24" fill="#e3b52b"/><rect x="12" width="12" height="24" fill="#1a1a1a"/></pattern>
+    <radialGradient id="vig" cx=".5" cy=".5" r=".78"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".6"/></radialGradient>
+    <linearGradient id="lightgrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff7d6"/><stop offset="1" stop-color="#f1c76d"/></linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+
+  function base(k){
+    const P = {A:['#2b3c34','#1c2924'], B:['#2a403b','#18262a'], C:['#1d3240','#121f29']}[k];
+    let s = `<rect width="800" height="450" fill="${P[0]}"/>`;
+    if(k==='A') s += `<rect width="800" height="250" fill="url(#paper)"/><rect y="250" width="800" height="100" fill="rgba(0,0,0,.2)"/>`;
+    if(k==='B') s += `<rect width="800" height="350" fill="url(#tiles)"/>`;
+    if(k==='C') s += `<g stroke="rgba(255,255,255,.06)" stroke-width="3"><path d="M0 60H800M0 170H800M0 280H800"/></g>`;
+    s += `<rect y="350" width="800" height="100" fill="${P[1]}"/><rect y="350" width="800" height="100" fill="url(#${k==='C'?'grate':'chk'})"/>
+      <rect y="346" width="800" height="7" fill="rgba(0,0,0,.45)"/>
+      <ellipse cx="660" cy="34" rx="100" ry="26" fill="rgba(0,0,0,.16)"/><ellipse cx="110" cy="388" rx="70" ry="10" fill="rgba(0,0,0,.2)"/>`;
+    return s;
+  }
+  const fin = s => s + `<rect width="800" height="450" fill="url(#vig)" pointer-events="none"/>`;
+
+  /* ---------- ROOM A: Приёмная ---------- */
+  function sA1(){
+    const f = S.f; let s = base('A');
+    s += `<rect x="240" y="48" width="320" height="72" rx="4" fill="#0c1612" stroke="#58786a" stroke-width="3"/>
+      <text x="400" y="86" text-anchor="middle" fill="#9dffb5" font-family="Fira Sans Condensed,sans-serif" font-size="27" font-weight="600" opacity=".8">НИИ БИОСИНТЕЗА</text>
+      <text x="400" y="108" text-anchor="middle" fill="#7c9a8a" font-family="Fira Sans Condensed,sans-serif" font-size="15">Приёмная. Пропуск обязателен</text>
+      <path d="M510 48l-26 72" stroke="#0a110e" stroke-width="3"/>`;
+    s += `<rect x="80" y="252" width="640" height="22" rx="3" fill="#74634a"/>
+      <rect x="92" y="274" width="616" height="84" fill="#3a3025"/><path d="M92 302H708M92 332H708" stroke="#2a221a" stroke-width="2"/>`;
+    // logbook
+    s += `<rect x="126" y="236" width="104" height="17" rx="2" fill="#e1d8c1"/><path d="M178 236v17" stroke="#8a7f66" stroke-width="2"/>
+      <path d="M134 241h34M134 246h28M188 241h34M188 246h26" stroke="#8a7f66" stroke-width="1.5"/>`;
+    s += hs('logbook',120,230,116,26,'Журнал смены');
+    // lamp
+    s += `<ellipse cx="320" cy="250" rx="26" ry="5" fill="#222"/><path d="M320 248V212l22-18" stroke="#444" stroke-width="5" fill="none"/>
+      <polygon points="328,184 362,196 352,214 318,204" fill="#3d4a44"/>`;
+    s += hs('lamp',290,180,80,74,'Настольная лампа');
+    // plant
+    s += `<rect x="620" y="226" width="40" height="28" rx="3" fill="#7d4a30"/><g stroke="#7b6a3b" stroke-width="3" fill="none" stroke-linecap="round"><path d="M640 226q-18-34-30-50M640 226q4-40-4-62M640 226q20-30 38-40"/></g>`;
+    s += hs('plant',596,160,100,96,'Высохший фикус');
+    // drawer
+    if(!f.drawerA){
+      s += `<rect x="478" y="282" width="204" height="66" rx="3" fill="#4a3d2d" stroke="#1d160e" stroke-width="2"/>
+        <rect x="546" y="291" width="68" height="20" rx="2" fill="#080f0c" stroke="#58786a"/>
+        <text x="580" y="306" text-anchor="middle" fill="#9dffb5" font-family="Special Elite,monospace" font-size="14">_ _ _ _</text>
+        <rect x="556" y="326" width="48" height="8" rx="4" fill="#9a8a62"/>`;
+      s += hs('drawerA',478,282,204,66,'Ящик с кодовым замком');
+    } else {
+      s += `<rect x="478" y="282" width="204" height="14" fill="#4a3d2d"/>
+        <rect x="470" y="298" width="220" height="68" rx="3" fill="#241b12" stroke="#1d160e" stroke-width="2"/>
+        <rect x="480" y="306" width="200" height="50" fill="#100b07"/><rect x="470" y="356" width="220" height="12" fill="#4a3d2d"/>`;
+      if(!f.flash) s += `<rect x="500" y="324" width="96" height="16" rx="5" fill="#4a525a"/><rect x="594" y="320" width="28" height="24" rx="4" fill="#6b747c"/><circle cx="622" cy="332" r="7" fill="#2d3438"/>`;
+      s += hs('drawerA',470,282,220,86,'Открытый ящик');
+      if(!f.flash) s += hs('flash',494,314,134,36,'Фонарик в ящике');
+    }
+    return fin(s);
+  }
+
+  function sA2(){
+    const f = S.f; let s = base('A');
+    // clock
+    s += `<circle cx="250" cy="150" r="76" fill="#262626"/><circle cx="250" cy="150" r="68" fill="#cfd8d2"/>`;
+    for(let i=0;i<12;i++){ s += `<line x1="250" y1="90" x2="250" y2="${i%3===0?100:96}" stroke="#1b2420" stroke-width="${i%3===0?4:2}" transform="rotate(${i*30} 250 150)"/>`; }
+    s += `<line x1="250" y1="150" x2="250" y2="114" stroke="#1b2420" stroke-width="6" stroke-linecap="round" transform="rotate(113.5 250 150)"/>
+      <line x1="250" y1="150" x2="250" y2="96" stroke="#1b2420" stroke-width="4" stroke-linecap="round" transform="rotate(282 250 150)"/>
+      <circle cx="250" cy="150" r="5" fill="#a4502d"/><path d="M290 110l-14 26 10 8" stroke="rgba(0,0,0,.5)" stroke-width="2" fill="none"/>`;
+    s += hs('clock',174,74,152,152,'Настенные часы');
+    // board
+    s += `<rect x="440" y="62" width="270" height="200" rx="3" fill="#6f5232"/><rect x="450" y="72" width="250" height="180" fill="#a1784b"/>
+      <g transform="rotate(-4 500 110)"><rect x="466" y="86" width="64" height="48" fill="#e9efe9"/><path d="M472 98h50M472 108h42M472 118h46" stroke="#8a948c" stroke-width="2"/></g>
+      <g transform="rotate(5 620 110)"><rect x="590" y="84" width="70" height="52" fill="#f1e7a8"/><path d="M598 98h54M598 108h44M598 118h50" stroke="#a89b52" stroke-width="2"/></g>
+      <rect x="548" y="160" width="124" height="74" fill="#e9efe9"/>
+      <circle cx="498" cy="90" r="4" fill="#c53434"/><circle cx="625" cy="88" r="4" fill="#3b82f6"/><circle cx="610" cy="164" r="4" fill="#c53434"/>`;
+    if(f.uvSeen) s += `<text x="610" y="212" text-anchor="middle" fill="#9dffb5" font-family="Special Elite,monospace" font-size="34" filter="url(#glow)">7 2 9</text>`;
+    s += hs('board',440,62,270,200,'Доска объявлений');
+    // extinguisher
+    s += `<rect x="96" y="262" width="88" height="10" rx="2" fill="#555"/><rect x="104" y="296" width="72" height="8" fill="#555"/>`;
+    if(!f.ext){
+      s += `<rect x="116" y="252" width="48" height="104" rx="12" fill="#c53434"/><rect x="132" y="236" width="16" height="18" fill="#2c2c2c"/>
+        <path d="M148 240h22l8 14" stroke="#2c2c2c" stroke-width="5" fill="none"/><rect x="122" y="290" width="36" height="26" fill="#efe9d4"/>`;
+      s += hs('ext',104,232,80,128,'Огнетушитель');
+    }
+    return fin(s);
+  }
+
+  function sA3(){
+    const f = S.f; let s = base('A');
+    // lab door
+    s += `<rect x="86" y="56" width="180" height="296" fill="#111a16"/>`;
+    if(f.labOpen){
+      s += `<rect x="100" y="70" width="152" height="282" fill="#0a1a12"/><rect x="100" y="70" width="152" height="282" fill="rgba(157,255,181,.14)"/>
+        <polygon points="100,70 168,86 168,336 100,352" fill="#4a5a52" stroke="#111a16" stroke-width="2"/>`;
+    } else {
+      s += `<rect x="100" y="70" width="152" height="282" fill="#4f5e57"/><rect x="132" y="104" width="88" height="72" fill="#0d1a14" stroke="#2e3a35" stroke-width="3"/>
+        <rect x="100" y="300" width="152" height="52" fill="url(#haz)" opacity=".75"/><rect x="214" y="206" width="20" height="8" rx="3" fill="#9a8a62"/>`;
+    }
+    s += `<rect x="96" y="36" width="160" height="22" rx="2" fill="#0c1612" stroke="#58786a"/><text x="176" y="52" text-anchor="middle" fill="#9dffb5" font-family="Fira Sans Condensed,sans-serif" font-size="15" font-weight="600" opacity=".85">ЛАБОРАТОРИЯ</text>`;
+    s += `<rect x="274" y="186" width="46" height="74" rx="4" fill="#1a2420" stroke="#58786a"/><rect x="280" y="192" width="34" height="14" fill="#050c09"/>
+      <text x="297" y="203" text-anchor="middle" fill="${f.labOpen?'#9dffb5':'#e5483b'}" font-family="Special Elite,monospace" font-size="11">${f.labOpen?'OK':'- - -'}</text>
+      <g fill="#6b7a73">${[0,1,2,3].map(r=>[0,1,2].map(c=>`<circle cx="${286+c*11}" cy="${216+r*10}" r="3"/>`).join('')).join('')}</g>`;
+    s += hs('labdoor',86,36,238,316,'Дверь в лабораторию с кодовой панелью');
+    // lift
+    s += `<rect x="470" y="56" width="240" height="296" fill="#26302c" stroke="#58786a" stroke-width="3"/>`;
+    if(f.won){
+      s += `<rect x="484" y="70" width="212" height="282" fill="url(#lightgrad)"/><rect x="484" y="70" width="40" height="282" fill="#8a9690"/><rect x="656" y="70" width="40" height="282" fill="#8a9690"/>`;
+    } else {
+      s += `<rect x="484" y="70" width="104" height="282" fill="#8a9690"/><rect x="592" y="70" width="104" height="282" fill="#7e8a84"/><path d="M588 70v282" stroke="#2c3531" stroke-width="4"/>
+        <path d="M500 110h72M500 150h72M608 110h72M608 150h72" stroke="rgba(0,0,0,.18)" stroke-width="3"/>`;
+    }
+    s += `<rect x="540" y="36" width="140" height="22" rx="2" fill="#0c1612" stroke="#58786a"/><text x="610" y="52" text-anchor="middle" fill="${f.power?'#9dffb5':'#5e7468'}" font-family="Special Elite,monospace" font-size="14">ЛИФТ  ${f.power?'1':'--'}</text>
+      <rect x="420" y="190" width="38" height="66" rx="4" fill="#1a2420" stroke="#58786a"/><rect x="428" y="200" width="22" height="30" rx="2" fill="#080f0c"/>
+      <circle cx="439" cy="242" r="5" fill="${f.power?'#4cd98a':'#7a2e2e'}"/>`;
+    s += hs('lift',410,36,310,320,'Лифт и считыватель карт');
+    return fin(s);
+  }
+
+  /* ---------- ROOM B: Лаборатория ---------- */
+  function sB1(){
+    const f = S.f; let s = base('B');
+    // door to A
+    s += `<rect x="36" y="104" width="112" height="246" fill="#111a16"/><rect x="46" y="114" width="92" height="236" fill="#4a5a52"/>
+      <rect x="46" y="300" width="92" height="50" fill="url(#haz)" opacity=".75"/><rect x="118" y="220" width="12" height="8" rx="3" fill="#9a8a62"/>
+      <rect x="46" y="88" width="92" height="16" fill="#0c1612" stroke="#58786a"/>`;
+    s += hs('toA',36,88,112,262,'Дверь в приёмную');
+    // bench
+    s += `<rect x="170" y="268" width="620" height="18" fill="#7a8a84"/><rect x="180" y="286" width="600" height="64" fill="#2e3d38"/><path d="M180 318H780M480 286v64" stroke="#1c2824" stroke-width="2"/>`;
+    // microscope
+    s += `<ellipse cx="290" cy="266" rx="38" ry="7" fill="#1d2326"/>
+      <path d="M312 264q24-8 22-48q-2-34-30-42" fill="none" stroke="#3b4a52" stroke-width="12" stroke-linecap="round"/>
+      <rect x="268" y="168" width="22" height="64" rx="4" fill="#52646d" transform="rotate(-14 279 200)"/>
+      <rect x="256" y="238" width="62" height="8" fill="#2b3338"/>`;
+    if(f.slideIn) s += `<rect x="262" y="233" width="48" height="5" fill="#a9d8e6"/>`;
+    s += hs('microscope',240,160,110,112,'Микроскоп');
+    // tray
+    s += `<rect x="380" y="256" width="112" height="12" rx="2" fill="#2b3338"/>`;
+    if(!f.slide) s += `<rect x="390" y="247" width="34" height="9" fill="#a9d8e6" opacity=".85"/><rect x="430" y="248" width="34" height="8" fill="#a9d8e6" opacity=".85" transform="rotate(-4 447 252)"/>`;
+    s += hs('tray',376,238,120,34,'Лоток с предметными стёклами');
+    // flasks
+    s += `<rect x="520" y="262" width="92" height="6" fill="#2b3338"/>`;
+    s += flaskPath(540,262,'rgba(191,227,232,.35)',0.8) + flaskPath(570,262,'rgba(191,227,232,.35)',0.8);
+    if(!f.flask) s += flaskPath(600,262,'rgba(191,227,232,.35)',0.8);
+    s += hs('flaskrack',520,224,96,46,'Колбы');
+    // sink
+    s += `<ellipse cx="690" cy="268" rx="66" ry="12" fill="#0e1517" stroke="#9aa8a2" stroke-width="3"/><circle cx="690" cy="270" r="6" fill="#06090a"/>`;
+    if(!f.key) s += `<rect x="686" y="268" width="8" height="2" fill="#b7743c"/>`;
+    s += `<path d="M742 262V214q0-12-12-12h-16" stroke="#9aa8a2" stroke-width="7" fill="none"/>`;
+    s += hs('sink',624,196,150,84,'Раковина');
+    // wall shelf
+    s += `<rect x="330" y="120" width="260" height="8" fill="#52646d"/><g fill="rgba(191,227,232,.3)" stroke="#9aa8a2"><rect x="346" y="86" width="28" height="34" rx="4"/><rect x="390" y="94" width="24" height="26" rx="4"/><rect x="520" y="82" width="32" height="38" rx="4"/></g>`;
+    return fin(s);
+  }
+
+  function sB2(){
+    const f = S.f; let s = base('B');
+    // cabinet
+    s += `<rect x="56" y="70" width="210" height="284" fill="#16211e" stroke="#58786a" stroke-width="3"/><rect x="68" y="82" width="186" height="260" fill="rgba(180,220,230,.07)"/>
+      <path d="M68 168H254M68 254H254" stroke="#58786a" stroke-width="3"/>`;
+    const bot = (x,y,c)=>`<rect x="${x}" y="${y}" width="26" height="46" rx="5" fill="${c}"/><rect x="${x+8}" y="${y-12}" width="10" height="14" fill="#cfd8d2"/><rect x="${x+3}" y="${y+16}" width="20" height="14" fill="#e9efe9" opacity=".8"/>`;
+    s += bot(90,116,'#3b82f6')+bot(150,116,'#f2d13b')+bot(208,116,'#e5483b')+bot(100,202,'#f2d13b')+bot(182,202,'#3b82f6')+bot(120,288,'#e5483b')+bot(200,288,'#3b82f6');
+    s += hs('bottles',56,70,210,284,'Шкаф с реактивами');
+    // magnet on cabinet side
+    if(!f.magnet){
+      s += `<path d="M274 196v20a9 9 0 0018 0v-20" fill="none" stroke="#d63b3b" stroke-width="6"/><rect x="271" y="190" width="6" height="8" fill="#dfe6e2"/><rect x="289" y="190" width="6" height="8" fill="#dfe6e2"/>`;
+      s += hs('magnet',264,184,40,48,'Магнит на боку шкафа');
+    }
+    // recipe poster
+    s += `<rect x="326" y="66" width="190" height="190" fill="#e6e1cf" transform="rotate(-1 420 160)"/>
+      <text x="421" y="98" text-anchor="middle" fill="#2c332f" font-family="Special Elite,monospace" font-size="15">РЕЦЕПТ</text>
+      <text x="421" y="118" text-anchor="middle" fill="#2c332f" font-family="Special Elite,monospace" font-size="13">индикаторный раствор</text>
+      <circle cx="372" cy="152" r="9" fill="#3b82f6"/><circle cx="398" cy="152" r="9" fill="#3b82f6"/><text x="418" y="157" fill="#2c332f" font-family="Special Elite,monospace" font-size="16">+</text><circle cx="446" cy="152" r="9" fill="#f2d13b"/>
+      <text x="421" y="192" text-anchor="middle" fill="#2c332f" font-family="Special Elite,monospace" font-size="13">= зелёный</text>
+      <text x="421" y="226" text-anchor="middle" fill="#a4502d" font-family="Special Elite,monospace" font-size="13">красный не добавлять</text>`;
+    s += hs('recipe',326,66,190,190,'Плакат с рецептом');
+    // station
+    s += `<rect x="548" y="270" width="200" height="80" fill="#2e3d38" stroke="#1c2824" stroke-width="2"/><rect x="540" y="262" width="216" height="12" fill="#7a8a84"/>
+      <rect x="560" y="116" width="176" height="54" rx="4" fill="#3b4a52"/>`;
+    [['#3b82f6',590],['#f2d13b',648],['#e5483b',706]].forEach(([c,x])=>{
+      s += `<path d="M${x-18} 170l10 28h16l10-28z" fill="#52646d"/><circle cx="${x}" cy="143" r="14" fill="${c}"/><rect x="${x-3}" y="198" width="6" height="22" fill="#9aa8a2"/>`;
+    });
+    s += `<rect x="574" y="218" width="148" height="6" fill="#52646d"/>`;
+    if(f.green) s += flaskPath(648,262,'#4cd98a',1.1);
+    s += hs('station',540,108,216,168,'Станция смешивания');
+    return fin(s);
+  }
+
+  function sB3(){
+    const f = S.f; let s = base('B');
+    // safe
+    s += `<rect x="80" y="110" width="210" height="220" rx="6" fill="#3a4a52" stroke="#1d272c" stroke-width="4"/>`;
+    if(!f.safeOpen){
+      s += `<rect x="94" y="124" width="182" height="192" rx="4" fill="#52646d"/>
+        <rect x="108" y="144" width="154" height="56" rx="4" fill="#050c09" stroke="#58786a"/>`;
+      for(let i=0;i<4;i++){ s += `<rect x="${114+i*37}" y="150" width="32" height="44" rx="3" fill="#0b1712" stroke="#2c4a3f"/>` + shape(SH[S.safe[i]], 130+i*37, 172, 11, '#9dffb5'); }
+      s += `<circle cx="185" cy="256" r="32" fill="#2c353a" stroke="#9aa8a2" stroke-width="4"/><path d="M185 230v52M159 256h52" stroke="#9aa8a2" stroke-width="5"/>`;
+    } else {
+      s += `<rect x="96" y="124" width="178" height="192" fill="#0b1210"/><polygon points="96,124 62,138 62,308 96,316" fill="#52646d" stroke="#1d272c" stroke-width="3"/>`;
+      if(!f.keycard) s += `<rect x="130" y="206" width="110" height="68" rx="5" fill="#d94b4b" transform="rotate(-6 185 240)"/><rect x="130" y="218" width="110" height="14" fill="#2a2a2a" transform="rotate(-6 185 240)"/>`;
+    }
+    s += hs('safe',80,110,210,220,'Сейф с символами');
+    if(f.safeOpen && !f.keycard) s += hs('keycard',124,196,122,86,'Карта-ключ в сейфе');
+    // terminal
+    s += `<rect x="330" y="262" width="150" height="14" fill="#7a8a84"/><rect x="340" y="276" width="130" height="74" fill="#2e3d38"/>
+      <rect x="352" y="170" width="106" height="82" rx="5" fill="#1c2824" stroke="#58786a" stroke-width="3"/><rect x="362" y="180" width="86" height="62" fill="#050c09"/>
+      <text x="405" y="206" text-anchor="middle" fill="#e5483b" font-family="Special Elite,monospace" font-size="11">ДОСТУП</text><text x="405" y="222" text-anchor="middle" fill="#e5483b" font-family="Special Elite,monospace" font-size="11">ЗАПРЕЩЁН</text>
+      <rect x="390" y="252" width="30" height="10" fill="#1c2824"/>`;
+    s += hs('terminal',340,166,136,186,'Терминал');
+    // door to C
+    s += `<rect x="528" y="58" width="210" height="294" fill="#111a16"/>`;
+    if(f.cUnlocked){
+      s += `<rect x="540" y="70" width="186" height="282" fill="#071018"/><rect x="540" y="70" width="186" height="282" fill="rgba(110,170,220,.12)"/>
+        <polygon points="540,70 600,88 600,336 540,352" fill="#52646d" stroke="#111a16" stroke-width="2"/>`;
+    } else {
+      s += `<rect x="540" y="70" width="186" height="282" fill="#52646d"/><rect x="540" y="70" width="186" height="34" fill="url(#haz)" opacity=".8"/>
+        <rect x="556" y="132" width="154" height="40" fill="#1c2824"/><text x="633" y="159" text-anchor="middle" fill="#9dffb5" font-family="Fira Sans Condensed,sans-serif" font-size="22" font-weight="600" opacity=".85">ХРАНИЛИЩЕ</text>
+        <circle cx="684" cy="236" r="18" fill="#2c353a" stroke="#b7743c" stroke-width="3"/><rect x="681" y="232" width="6" height="16" rx="2" fill="#050c09"/>`;
+    }
+    s += hs('doorC',528,58,210,294,'Дверь в хранилище');
+    return fin(s);
+  }
+
+  /* ---------- ROOM C: Хранилище ---------- */
+  function sC1(){
+    const f = S.f; let s = base('C');
+    [40,180,320,460].forEach((x,i)=>{
+      const burn = (i===2);
+      const dead = burn && f.fireOut;
+      s += `<rect x="${x}" y="62" width="124" height="286" rx="3" fill="${dead?'#0c0f10':'#1a2831'}" stroke="#0a1015" stroke-width="3"/>`;
+      for(let r=0;r<8;r++){
+        s += `<rect x="${x+10}" y="${76+r*34}" width="104" height="26" fill="#0f1a21"/>`;
+        if(!dead) s += `<circle cx="${x+22}" cy="${89+r*34}" r="3" fill="${(r+i)%3===0?'#e5483b':'#4cd98a'}" opacity=".85"/>`;
+      }
+    });
+    if(!f.fireOut){
+      s += `<g>
+        <path class="flame" d="M332 150q-18-34 4-64q6 24 24 36q10-28 4-48q36 38 22 76z" fill="#ff7a1a"/>
+        <path class="flame" d="M348 150q-10-22 6-40q4 14 14 22q6-14 2-28q22 24 12 46z" fill="#ffd23f"/>
+        <path class="flame" d="M400 260q-14-26 4-48q4 18 18 26q6-20 0-34q28 28 14 56z" fill="#ff7a1a"/>
+      </g><circle cx="378" cy="50" r="30" fill="rgba(180,180,180,.2)"/><circle cx="400" cy="26" r="26" fill="rgba(160,160,160,.16)"/>`;
+    } else {
+      s += `<ellipse cx="378" cy="150" rx="46" ry="20" fill="#e9efe9" opacity=".9"/><ellipse cx="400" cy="250" rx="36" ry="16" fill="#e9efe9" opacity=".85"/><ellipse cx="352" cy="320" rx="30" ry="10" fill="#e9efe9" opacity=".8"/>`;
+    }
+    s += hs('fire',320,56,142,296,f.fireOut?'Обгоревшая стойка':'Горящая серверная стойка');
+    // monitor
+    s += `<rect x="610" y="278" width="160" height="14" fill="#7a8a84"/><rect x="624" y="292" width="132" height="60" fill="#2e3d38"/>
+      <rect x="628" y="176" width="124" height="94" rx="5" fill="#1c2824" stroke="#58786a" stroke-width="3"/>
+      <rect x="638" y="186" width="104" height="74" fill="${f.fireOut?'#06130c':'#101414'}"/>`;
+    if(f.fireOut) s += `<g stroke="#9dffb5" stroke-width="3" opacity=".8"><path d="M648 204h60M648 218h44M648 232h68M648 246h36"/></g>`;
+    else s += `<circle cx="690" cy="222" r="30" fill="rgba(150,150,150,.25)"/>`;
+    s += hs('monitor',620,170,142,106,'Монитор');
+    return fin(s);
+  }
+
+  function sC2(){
+    const f = S.f; let s = base('C');
+    // freezer door
+    s += `<rect x="236" y="48" width="330" height="304" rx="6" fill="#0c141a"/>`;
+    if(f.thawed){
+      s += `<rect x="250" y="62" width="302" height="276" fill="#08151e"/><rect x="250" y="62" width="302" height="276" fill="rgba(140,200,240,.1)"/>
+        <rect x="262" y="200" width="278" height="8" fill="#52646d"/><rect x="262" y="290" width="278" height="8" fill="#52646d"/>
+        <g fill="rgba(190,225,245,.35)" stroke="#a9d8e6"><rect x="280" y="150" width="46" height="50" rx="4"/><rect x="450" y="240" width="52" height="50" rx="4"/></g>
+        <polygon points="250,62 212,82 212,320 250,338" fill="#6a7c86" stroke="#0c141a" stroke-width="3"/>`;
+      if(!f.handle) s += `<path d="M360 200L396 156" stroke="#b8c1c6" stroke-width="8" stroke-linecap="round"/><circle cx="402" cy="150" r="9" fill="#d94b4b"/><rect x="346" y="196" width="16" height="8" rx="1" fill="#6c767c"/>`;
+    } else {
+      s += `<rect x="250" y="62" width="302" height="276" fill="#6a7c86"/><rect x="250" y="62" width="302" height="276" fill="rgba(190,225,245,.18)"/>
+        <rect x="508" y="170" width="22" height="86" rx="6" fill="#2c353a"/>
+        <g fill="#e8f6fa" opacity=".9"><polygon points="496,160 530,150 548,192 520,216 492,200"/><polygon points="480,214 506,230 498,266 468,254"/><polygon points="534,236 556,260 530,284 512,262"/></g>
+        <g fill="#e8f6fa" opacity=".5"><polygon points="262,64 330,64 262,130"/><polygon points="552,336 480,336 552,270"/></g>`;
+    }
+    s += `<rect x="580" y="80" width="64" height="32" rx="3" fill="#050c09" stroke="#58786a"/><text x="612" y="102" text-anchor="middle" fill="#9dffb5" font-family="Special Elite,monospace" font-size="15">-18</text>`;
+    s += hs('freezer',236,48,330,304,f.thawed?'Открытая морозильная камера':'Обледеневшая морозильная камера');
+    if(f.thawed && !f.handle) s += hs('handle',340,138,84,78,'Рукоять рубильника в камере');
+    // side shelf
+    s += `<rect x="60" y="150" width="140" height="8" fill="#52646d"/><g fill="rgba(190,225,245,.25)" stroke="#a9d8e6"><rect x="74" y="112" width="34" height="38" rx="4"/><rect x="120" y="118" width="30" height="32" rx="4"/><rect x="162" y="106" width="28" height="44" rx="4"/></g>`;
+    s += hs('samples',60,100,150,64,'Контейнеры с образцами');
+    return fin(s);
+  }
+
+  function sC3(){
+    const f = S.f; let s = base('C');
+    // cables
+    s += `<g stroke="#0a1015" stroke-width="7" fill="none"><path d="M0 60Q200 90 390 56T800 80"/><path d="M0 100Q240 130 430 96T800 126" stroke-width="5"/></g>`;
+    s += hs('cables',380,40,160,70,'Кабели');
+    // panel
+    s += `<rect x="86" y="88" width="250" height="250" rx="4" fill="#4a5a62" stroke="#1d272c" stroke-width="4"/><rect x="100" y="102" width="222" height="222" fill="#2c383e"/>
+      <rect x="100" y="102" width="222" height="26" fill="url(#haz)" opacity=".85"/>`;
+    for(let i=0;i<4;i++){ s += `<rect x="${116+i*52}" y="144" width="38" height="68" rx="4" fill="#161f23" stroke="#58786a"/><circle cx="${135+i*52}" cy="228" r="6" fill="${f.power?'#4cd98a':'#7a2e2e'}"/><text x="${135+i*52}" y="246" text-anchor="middle" fill="#8fb0a0" font-family="Fira Sans Condensed,sans-serif" font-size="14">Q${i+1}</text>`; }
+    s += `<rect x="188" y="262" width="46" height="46" rx="6" fill="#161f23" stroke="#58786a"/><circle cx="211" cy="285" r="7" fill="#0a1015"/>`;
+    if(f.handleIn) s += `<path d="M211 285L240 258" stroke="#b8c1c6" stroke-width="7" stroke-linecap="round" ${f.power?'transform="rotate(70 211 285)"':''}/><circle cx="${f.power?'250':'244'}" cy="${f.power?'294':'254'}" r="9" fill="#d94b4b"/>`;
+    s += hs('panel',86,88,250,250,'Электрощиток');
+    // door to B
+    s += `<rect x="520" y="76" width="190" height="276" fill="#111a16"/><rect x="532" y="88" width="166" height="264" fill="#4a5a62"/>
+      <rect x="532" y="300" width="166" height="52" fill="url(#haz)" opacity=".75"/><rect x="668" y="214" width="14" height="8" rx="3" fill="#9a8a62"/>
+      <rect x="560" y="56" width="110" height="18" fill="#0c1612" stroke="#58786a"/><text x="615" y="70" text-anchor="middle" fill="#9dffb5" font-family="Fira Sans Condensed,sans-serif" font-size="13" opacity=".85">ВЫХОД В ЛАБОРАТОРИЮ</text>`;
+    s += hs('toB',520,56,190,296,'Дверь в лабораторию');
+    return fin(s);
+  }
+
+  const SC = [[sA1,sA2,sA3],[sB1,sB2,sB3],[sC1,sC2,sC3]];
+
+  /* ---------- render ---------- */
+  function render(){
+    $('#stage').innerHTML = DEFS + SC[S.room][S.wall]();
+    $('#stage').classList.remove('flash');
+    const R = ROOMS[S.room];
+    $('#tabs').innerHTML = `<span class="room">${R.n}</span>` +
+      R.w.map((n,i)=>`<button class="tab" type="button" data-v="${i}" ${i===S.wall?'aria-current="true"':''}>${n}</button>`).join('');
+    let h = '';
+    for(let i=0;i<8;i++){
+      const id = S.inv[i];
+      if(id){
+        h += `<button class="slot full" type="button" data-i="${id}" aria-pressed="${S.sel===id}" aria-label="${ITEMS[id].name}" title="${ITEMS[id].name}"><svg viewBox="0 0 48 48" aria-hidden="true">${ITEMS[id].icon}</svg></button>`;
+      } else {
+        h += `<button class="slot" type="button" disabled aria-label="Пустая ячейка"></button>`;
+      }
+    }
+    $('#inv').innerHTML = h;
+  }
+  function say(t){ $('#log').textContent = t; }
+  function take(id){ if(!S.inv.includes(id)) S.inv.push(id); }
+  function drop(id){ S.inv = S.inv.filter(x=>x!==id); if(S.sel===id) S.sel = null; }
+  function go(r,w,msg){ S.room = r; S.wall = w; render(); if(msg) say(msg); }
+  const nm = id => ITEMS[id].name;
+
+  /* ---------- game logic ---------- */
+  function act(id){
+    const f = S.f, sel = S.sel;
+    switch(id){
+      /* приёмная: стойка */
+      case 'logbook':
+        openNote('Журнал смены','«Сегодня всё пошло не так. В 03:47 мигнул свет, взвыла сирена, и настенные часы встали именно в эту секунду. Самое важное я запер в ящик. Код простой: время, которое показывают часы, без двоеточия. Лабораторию закрыл на кодовый замок, цифры оставил на доске, но так, чтобы их не нашёл кто попало».');
+        break;
+      case 'lamp': say('Настольная лампа не включается: провод перегрызен.'); break;
+      case 'plant': say('Фикус высох до скелета. Воды здесь не видели много лет.'); break;
+      case 'drawerA':
+        if(!f.drawerA) openDigits('Кодовый замок ящика','Установите четыре цифры.',DRAWER_CODE,()=>{
+          f.drawerA = true; say('Замок щёлкнул, ящик выдвинулся. На дне лежит фонарик.'); render();
+        });
+        else say(f.flash ? 'Ящик пуст.' : 'Ящик открыт. На дне лежит фонарик.');
+        break;
+      case 'flash':
+        f.flash = true; take('flashlight'); say('Вы взяли фонарик. Он не горит: батарейный отсек пуст.'); render(); break;
+
+      /* приёмная: доска */
+      case 'clock':
+        if(!f.batt){ f.batt = true; take('battery'); say('Часы стоят на 03:47. Вы открыли заднюю крышку и вынули батарейку.'); }
+        else say('Часы стоят на 03:47. Отсек питания пуст.');
+        break;
+      case 'board':
+        if(sel==='uv'){
+          if(!f.uvSeen){ f.uvSeen = true; say('В фиолетовом свете на чистом листе проступили цифры 7 2 9.'); render(); }
+          else say('На листе видны цифры 7 2 9.');
+        } else if(f.uvSeen){
+          openNote('Лист на доске','В ультрафиолете на листе читается: «Лаборатория: 7 2 9».');
+        } else {
+          openNote('Доска объявлений','«Столовая закрыта до особого распоряжения». «Реактивы без подписи не оставлять». «Пропуск потерял? Пишите в хозчасть». Нижний лист совсем чистый, но бумага у него странно блестит.');
+        }
+        break;
+      case 'ext':
+        f.ext = true; take('extinguisher'); say('Вы сняли огнетушитель со стены. Он тяжёлый, но заряжен.'); render(); break;
+
+      /* приёмная: двери */
+      case 'labdoor':
+        if(!f.labOpen) openKeypad();
+        else go(1,0,'Вы вошли в лабораторию.');
+        break;
+      case 'lift':
+        if(f.won) break;
+        if(sel==='keycard'){
+          if(f.power) win();
+          else say('Считыватель принял карту, но лифт обесточен: индикатор мигает красным.');
+        } else if(sel) say(nm(sel)+' к лифту не подходит.');
+        else say(f.power ? 'Питание есть. Нужна карта-ключ, чтобы вызвать лифт.' : 'Лифт мёртв. Считыватель карт не светится.');
+        break;
+
+      /* лаборатория: стол */
+      case 'toA': go(0,2,'Вы вернулись в приёмную.'); break;
+      case 'microscope':
+        if(f.slideIn) openScope();
+        else if(sel==='slide'){ f.slideIn = true; f.microSeen = true; drop('slide'); render(); openScope(); }
+        else if(sel) say(nm(sel)+' под микроскоп не поставишь.');
+        else say(f.slide ? 'Столик пуст. Выберите предметное стекло и поставьте его под объектив.' : 'Под объективом пусто. Нужен препарат на стекле.');
+        break;
+      case 'tray':
+        if(!f.slide){ f.slide = true; take('slide'); say('Вы взяли чистое предметное стекло. На нём тончайший налёт, видимо, образец.'); render(); }
+        else say('В лотке остались только пыль и осколки.');
+        break;
+      case 'flaskrack':
+        if(!f.flask){ f.flask = true; take('flask'); say('Вы взяли пустую колбу.'); render(); }
+        else say('Остальные колбы треснули.');
+        break;
+      case 'sink':
+        if(sel==='magnet'){
+          if(!f.key){ f.key = true; take('key'); drop('magnet'); say('Вы опустили магнит в слив и вытащили ржавый ключ.'); render(); }
+          else say('В сливе больше ничего нет.');
+        } else if(sel) say(nm(sel)+' слив не достанет.');
+        else say(f.key ? 'Слив пуст.' : 'На дне слива что-то тускло блестит. Руками не достать.');
+        break;
+
+      /* лаборатория: реактивы */
+      case 'bottles': say('Реактивы в бутылках: синий, жёлтый и красный. Подписи смыты, но цвет жидкости читается.'); break;
+      case 'magnet':
+        f.magnet = true; take('magnet'); say('Вы сняли магнит с боковой стенки шкафа.'); render(); break;
+      case 'recipe':
+        openNote('Рецепт индикаторного раствора','«Зелёный раствор: две части синего и одна часть жёлтого. Красный не добавлять, иначе выпадет осадок. Порядок капель не важен».');
+        break;
+      case 'station':
+        if(f.green) say('Станция пуста: раствор уже готов.');
+        else if(sel==='flask') openMix();
+        else say(f.flask ? 'Под краны нужно поставить колбу. Выберите её в инвентаре.' : 'Под кранами станции пусто. На рабочем столе стояли колбы.');
+        break;
+
+      /* лаборатория: сейф */
+      case 'safe':
+        if(f.safeOpen) say(f.keycard ? 'Сейф пуст.' : 'Сейф открыт. Внутри лежит карта-ключ.');
+        else openSafe();
+        break;
+      case 'keycard':
+        f.keycard = true; take('keycard'); say('Вы взяли красную карту-ключ.'); render(); break;
+      case 'terminal': say('Экран мигает: «Доступ запрещён. Карта-ключ не предъявлена». Похоже, это основной терминал, но он отключён.'); break;
+      case 'doorC':
+        if(f.cUnlocked) go(2,0,'Вы вошли в хранилище. Здесь холодно и пахнет гарью.');
+        else if(sel==='key'){ f.cUnlocked = true; drop('key'); say('Ржавый ключ с трудом провернулся. Дверь в хранилище открыта.'); render(); }
+        else if(sel) say(nm(sel)+' к этому замку не подходит.');
+        else say('Тяжёлая дверь заперта на старый замок.');
+        break;
+
+      /* хранилище */
+      case 'fire':
+        if(!f.fireOut){
+          if(sel==='extinguisher'){ f.fireOut = true; drop('extinguisher'); say('Белая пена накрыла стойку, и огонь погас. Теперь можно подойти к монитору.'); render(); }
+          else if(sel) say(nm(sel)+' пожару не помешает.');
+          else say('Горит серверная стойка! Огонь надо потушить, иначе к монитору не подойти.');
+        } else say('Стойка обуглена и залита пеной.');
+        break;
+      case 'monitor':
+        if(!f.fireOut) say('Экран за пламенем и дымом, ничего не прочитать.');
+        else { f.monitorSeen = true; openNote('Монитор','«АВАРИЙНЫЙ ЗАПУСК ПИТАНИЯ. Положение выключателей перед включением рубильника: Q1 вверх. Q2 вниз. Q3 вниз. Q4 вверх. После этого опустить рубильник».'); }
+        break;
+      case 'freezer':
+        if(!f.thawed){
+          if(sel==='solution'){ f.thawed = true; drop('solution'); say('Раствор зашипел на льду. Дверца освободилась и открылась. Внутри лежит рукоять.'); render(); }
+          else if(sel) say(nm(sel)+' лёд не берёт.');
+          else say('Дверца морозильной камеры вмёрзла в лёд. Нужно что-то, что его растопит.');
+        } else say(f.handle ? 'Камера пуста, только иней.' : 'Дверца открыта. Внутри лежит рукоять.');
+        break;
+      case 'handle':
+        f.handle = true; take('handle'); say('Вы взяли рукоять. Металл обжигает холодом.'); render(); break;
+      case 'samples': say('Контейнеры с образцами покрыты инеем. Лучше их не трогать.'); break;
+      case 'cables': say('Толстые кабели уходят в щиток. Некоторые оборваны.'); break;
+      case 'panel':
+        if(f.power) say('Питание включено. Индикаторы горят зелёным.');
+        else if(!f.handleIn){
+          if(sel==='handle'){ f.handleIn = true; drop('handle'); say('Рукоять села на ось. Теперь можно выставлять выключатели и опускать рубильник.'); render(); }
+          else if(sel) say(nm(sel)+' сюда не подходит.');
+          else say('На щитке пустая ось: рукоять рубильника отсутствует.');
+        } else openPanel();
+        break;
+      case 'toB': go(1,2,'Вы вернулись в лабораторию.'); break;
+    }
+  }
+
+  function win(){
+    S.f.won = true; drop('keycard');
+    say('Лифт пискнул и распахнул двери. Свет изнутри такой яркий, что слепит.');
+    render();
+    setTimeout(openWin, 1000);
+  }
+
+  function hint(){
+    const f = S.f;
+    if(f.won) return 'Вы уже выбрались!';
+    if(!f.drawerA) return 'Остановившиеся часы на доске и запись в журнале на стойке нужны для кодового замка ящика.';
+    if(!f.flash) return 'В открытом ящике лежит фонарик.';
+    if(!f.batt) return 'Фонарик без батарейки. Присмотритесь к часам на стене.';
+    if(!f.uvMade) return 'Выберите батарейку в инвентаре, затем нажмите на фонарик, чтобы соединить их.';
+    if(!f.uvSeen) return 'У фонарика ультрафиолетовый свет. Посветите им на доску объявлений.';
+    if(!f.labOpen) return 'Цифры с доски нужны для двери в лабораторию (в приёмной, на стене «Двери»).';
+    if(!f.microSeen) return 'В лаборатории на столе стоит микроскоп. Ему нужно предметное стекло из лотка.';
+    if(!f.keycard) return 'Символы из микроскопа нужны для сейфа на стене «Сейф». Нажимайте на ячейки, чтобы менять фигуры.';
+    if(!f.magnet) return 'На боку реактивного шкафа что-то держится на металле. Это магнит.';
+    if(!f.key) return 'На дне слива раковины что-то лежит. Достаньте магнитом.';
+    if(!f.cUnlocked) return 'Ржавый ключ подходит к двери хранилища на стене «Сейф».';
+    if(!f.ext) return 'В хранилище горит стойка. В приёмной на стене висит огнетушитель.';
+    if(!f.fireOut) return 'Выберите огнетушитель и нажмите на горящую стойку.';
+    if(!f.monitorSeen) return 'Теперь можно прочитать монитор рядом со стойкой.';
+    if(!f.flask) return 'Для станции смешивания нужна пустая колба с рабочего стола лаборатории.';
+    if(!f.green) return 'Рецепт зелёного раствора на плакате в лаборатории (стена «Реактивы»). Выберите колбу и нажмите на станцию.';
+    if(!f.thawed) return 'Зелёный раствор растопит лёд на морозильной камере в хранилище.';
+    if(!f.handle) return 'В открытой камере лежит рукоять.';
+    if(!f.handleIn) return 'Рукоять нужна щитку в хранилище (стена «Щиток»).';
+    if(!f.power) return 'Выставьте выключатели так, как написано на мониторе, и опустите рубильник.';
+    if(!f.keycard) return 'Заберите карту-ключ из сейфа.';
+    return 'Выберите карту-ключ и нажмите на лифт в приёмной.';
+  }
+
+  /* ---------- modals ---------- */
+  function openModal(html){
+    $('#card').innerHTML = html;
+    $('#modal').classList.add('open');
+    const b = $('#card button'); b && b.focus();
+  }
+  function closeModal(){ $('#modal').classList.remove('open'); $('#card').innerHTML = ''; }
+  function shakeEl(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+
+  function openNote(title, text){
+    openModal(`<h2>${title}</h2><div class="note">${text}</div><div class="row"><button class="btn primary" type="button" data-close>Закрыть</button></div>`);
+  }
+
+  function openDigits(title, txt, code, onOK){
+    const d = code.map(()=>0);
+    openModal(`<h2>${title}</h2><p>${txt}</p>
+      <div class="dials" id="dials">${d.map((_,i)=>`<div class="dial"><button type="button" data-i="${i}" data-d="1" aria-label="Цифра ${i+1} больше">&#9650;</button><output id="dg${i}">0</output><button type="button" data-i="${i}" data-d="-1" aria-label="Цифра ${i+1} меньше">&#9660;</button></div>`).join('')}</div>
+      <div class="status" id="cst"></div>
+      <div class="row"><button class="btn" type="button" data-close>Отмена</button><button class="btn primary" type="button" id="cok">Открыть</button></div>`);
+    $('#dials').addEventListener('click', e=>{
+      const b = e.target.closest('button[data-d]'); if(!b) return;
+      const i = +b.dataset.i; d[i] = (d[i] + +b.dataset.d + 10) % 10; $('#dg'+i).textContent = d[i];
+    });
+    $('#cok').addEventListener('click', ()=>{
+      if(d.every((v,i)=>v===code[i])){ closeModal(); onOK(); }
+      else { shakeEl($('#dials')); $('#cst').textContent = 'Не подходит. Ищите время, которое показывают часы.'; }
+    });
+  }
+
+  function openKeypad(){
+    let v = '';
+    openModal(`<h2>Кодовая панель двери</h2><p>Введите три цифры и нажмите «OK».</p>
+      <div class="screen" id="scr" aria-live="polite">&nbsp;</div>
+      <div class="keys" id="keys">${[1,2,3,4,5,6,7,8,9].map(n=>`<button type="button" data-k="${n}">${n}</button>`).join('')}<button type="button" data-k="C">C</button><button type="button" data-k="0">0</button><button type="button" data-k="OK">OK</button></div>
+      <div class="status" id="cst"></div>
+      <div class="row"><button class="btn" type="button" data-close>Отмена</button></div>`);
+    const upd = () => { $('#scr').textContent = v || '\u00A0'; };
+    $('#keys').addEventListener('click', e=>{
+      const b = e.target.closest('button[data-k]'); if(!b) return;
+      const k = b.dataset.k;
+      if(k==='C'){ v = ''; upd(); $('#cst').textContent = ''; }
+      else if(k==='OK'){
+        if(v===DOOR_CODE){ S.f.labOpen = true; closeModal(); say('Замок пискнул, дверь в лабораторию приоткрылась. Нажмите на неё ещё раз, чтобы войти.'); render(); }
+        else { shakeEl($('#scr')); $('#cst').textContent = 'Код неверный.'; v = ''; upd(); }
+      } else if(v.length < 3){ v += k; upd(); }
+    });
+  }
+
+  function openScope(){
+    let sh = '';
+    SAFE_CODE.forEach((k,i)=>{ sh += shape(SH[k], 150+(i-1.5)*50, 90, 16, '#c9a6ff'); });
+    openModal(`<h2>Под микроскопом</h2><p>На стекле видны четыре фигуры в ряд. Читайте слева направо.</p>
+      <svg viewBox="0 0 300 180" width="100%" role="img" aria-label="Четыре фигуры: ${SAFE_CODE.map(k=>SHNAME[k]).join(', ')}">
+        <circle cx="150" cy="90" r="84" fill="#0b1712" stroke="#58786a" stroke-width="5"/>
+        <circle cx="150" cy="90" r="76" fill="#143026"/>
+        <g>${sh}</g>
+      </svg>
+      <div class="row"><button class="btn primary" type="button" data-close>Закрыть</button></div>`);
+  }
+
+  function openSafe(){
+    const draw = () => {
+      $('#symrow').innerHTML = S.safe.map((k,i)=>`<button class="sym" type="button" data-i="${i}" aria-label="Ячейка ${i+1}: ${SHNAME[k]}"><svg viewBox="0 0 60 60" width="48" height="48">${shape(SH[k],30,30,17,'#9dffb5')}</svg></button>`).join('');
+    };
+    openModal(`<h2>Сейф</h2><p>Нажимайте на ячейки, чтобы менять фигуру: круг, треугольник, квадрат, ромб.</p>
+      <div class="symrow" id="symrow"></div><div class="status" id="cst"></div>
+      <div class="row"><button class="btn" type="button" data-close>Закрыть</button><button class="btn primary" type="button" id="sok">Открыть</button></div>`);
+    draw();
+    $('#symrow').addEventListener('click', e=>{
+      const b = e.target.closest('.sym'); if(!b) return;
+      const i = +b.dataset.i; S.safe[i] = (S.safe[i] + 1) % 5; draw();
+    });
+    $('#sok').addEventListener('click', ()=>{
+      if(S.safe.every((v,i)=>v===SAFE_CODE[i])){ S.f.safeOpen = true; closeModal(); say('Внутри сейфа что-то щёлкнуло, и дверца отошла. На полке лежит карта-ключ.'); render(); }
+      else { shakeEl($('#symrow')); $('#cst').textContent = 'Замок не поддаётся. Последовательность фигур где-то записана.'; }
+    });
+  }
+
+  function openMix(){
+    let drops = [], busy = false;
+    const liquid = () => {
+      const b = drops.filter(x=>x==='blue').length, y = drops.filter(x=>x==='yellow').length, r = drops.filter(x=>x==='red').length;
+      if(!drops.length) return null;
+      if(r>0 && (b>0||y>0)) return '#7a4b33';
+      if(r>0) return DROP.red[0];
+      if(b>0 && y>0) return '#3fbf6f';
+      return b>0 ? DROP.blue[0] : DROP.yellow[0];
+    };
+    const draw = () => {
+      const c = liquid(), h = drops.length*28;
+      $('#flk').innerHTML = `<clipPath id="flc"><path d="M42 8h36v34l30 56q6 12-6 12H18q-12 0-6-12l30-56z"/></clipPath>
+        ${c?`<rect x="0" y="${110-h}" width="120" height="${h+10}" fill="${c}" clip-path="url(#flc)" opacity=".92"/>`:''}
+        <path d="M42 8h36v34l30 56q6 12-6 12H18q-12 0-6-12l30-56z" fill="rgba(191,227,232,.12)" stroke="#d7eef0" stroke-width="3"/>`;
+      $('#cnt').textContent = 'Капель: ' + drops.length + ' из 3';
+    };
+    openModal(`<h2>Станция смешивания</h2><p>Добавьте три капли в колбу. Рецепт висит на плакате.</p>
+      <svg id="flk" viewBox="0 0 120 130" width="120" height="130" style="display:block;margin:0 auto" role="img" aria-label="Колба"></svg>
+      <div class="status" id="cnt"></div>
+      <div class="drops" id="drops">${Object.entries(DROP).map(([k,v])=>`<button class="dbtn" type="button" data-c="${k}"><i style="background:${v[0]}"></i>${v[1]}</button>`).join('')}</div>
+      <div class="status" id="cst"></div>
+      <div class="row"><button class="btn" type="button" data-close>Закрыть</button><button class="btn" type="button" id="clr">Слить</button></div>`);
+    draw();
+    $('#clr').addEventListener('click', ()=>{ drops = []; busy = false; $('#cst').textContent = ''; draw(); });
+    $('#drops').addEventListener('click', e=>{
+      const b = e.target.closest('button[data-c]'); if(!b || busy || drops.length>=3) return;
+      drops.push(b.dataset.c); draw();
+      if(drops.length===3){
+        const bl = drops.filter(x=>x==='blue').length, ye = drops.filter(x=>x==='yellow').length;
+        if(bl===2 && ye===1){
+          S.f.green = true; drop('flask'); take('solution'); closeModal();
+          say('Раствор стал ярко-зелёным. Вы забрали колбу с готовым составом.'); render();
+        } else {
+          busy = true; shakeEl($('#flk'));
+          $('#cst').textContent = 'Выпал осадок. Нажмите «Слить» и начните сначала.';
+        }
+      }
+    });
+  }
+
+  function openPanel(){
+    const draw = () => {
+      $('#sws').innerHTML = S.sw.map((u,i)=>`<button class="sw" type="button" data-i="${i}" aria-pressed="${u}"><b>${u?'\u25B2':'\u25BC'}</b>Q${i+1}<span>${u?'вверх':'вниз'}</span></button>`).join('');
+    };
+    openModal(`<h2>Щиток</h2><p>Выставьте положение выключателей, затем опустите рубильник.</p>
+      <div class="sws" id="sws"></div><div class="status" id="cst"></div>
+      <div class="row"><button class="btn" type="button" data-close>Закрыть</button><button class="btn primary" type="button" id="pull">Опустить рубильник</button></div>`);
+    draw();
+    $('#sws').addEventListener('click', e=>{ const b = e.target.closest('.sw'); if(!b) return; const i = +b.dataset.i; S.sw[i] = !S.sw[i]; draw(); });
+    $('#pull').addEventListener('click', ()=>{
+      if(S.sw.every((v,i)=>v===SW_TARGET[i])){
+        S.f.power = true; closeModal();
+        say('Рубильник упал. Где-то в стенах заревели насосы, а над лифтом в приёмной загорелась лампа.'); render();
+      } else {
+        S.sw = [false,false,false,false]; draw(); shakeEl($('#sws'));
+        $('#cst').textContent = 'Короткое замыкание: посыпались искры. Выключатели сброшены. Проверьте монитор.';
+      }
+    });
+  }
+
+  function openWin(){
+    const sec = Math.round((Date.now() - S.t0)/1000);
+    const t = Math.floor(sec/60) + ' мин ' + String(sec%60).padStart(2,'0') + ' с';
+    openModal(`<h2>Вы выбрались!</h2><p>Лифт поднял вас из заброшенного института на поверхность. Время побега: ${t}.</p>
+      <div class="row"><button class="btn primary" type="button" id="again">Сыграть ещё раз</button></div>`);
+    $('#again').addEventListener('click', reset);
+  }
+
+  /* ---------- events ---------- */
+  $('#stage').addEventListener('click', e=>{ const t = e.target.closest('.hs'); if(t) act(t.dataset.id); });
+  $('#stage').addEventListener('keydown', e=>{
+    if((e.key==='Enter'||e.key===' ') && e.target.classList && e.target.classList.contains('hs')){ e.preventDefault(); act(e.target.dataset.id); }
+  });
+  $('#tabs').addEventListener('click', e=>{ const b = e.target.closest('.tab'); if(b){ S.wall = +b.dataset.v; render(); } });
+  $('#prev').addEventListener('click', ()=>{ S.wall = (S.wall+2)%3; render(); say(ROOMS[S.room].n + ', стена «' + ROOMS[S.room].w[S.wall] + '».'); });
+  $('#next').addEventListener('click', ()=>{ S.wall = (S.wall+1)%3; render(); say(ROOMS[S.room].n + ', стена «' + ROOMS[S.room].w[S.wall] + '».'); });
+  $('#inv').addEventListener('click', e=>{
+    const b = e.target.closest('.slot.full'); if(!b) return;
+    const id = b.dataset.i;
+    if(S.sel && S.sel!==id){
+      const key = [S.sel,id].sort().join('+');
+      if(RECIPES[key]){
+        const res = RECIPES[key];
+        drop(S.sel); drop(id); take(res); S.f.uvMade = true; S.sel = null;
+        say('Вы вставили батарейку в фонарик. Он загорелся тусклым фиолетовым светом: это ультрафиолет.');
+        render(); return;
+      }
+      S.sel = id; render(); say('Выбрано: ' + nm(id) + '. Нажмите на предмет в комнате, чтобы применить.'); return;
+    }
+    S.sel = (S.sel===id) ? null : id;
+    render();
+    say(S.sel ? 'Выбрано: ' + nm(id) + '. Нажмите на предмет в комнате или на другой предмет в инвентаре.' : 'Предмет убран.');
+  });
+  $('#hintBtn').addEventListener('click', ()=> say(hint()));
+  $('#flashBtn').addEventListener('click', ()=>{ const s = $('#stage'); s.classList.remove('flash'); void s.getBoundingClientRect(); s.classList.add('flash'); });
+  $('#resetBtn').addEventListener('click', reset);
+  $('#modal').addEventListener('click', e=>{ if(e.target.id==='modal' || e.target.closest('[data-close]')) closeModal(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+  function reset(){
+    closeModal(); S = fresh(); render();
+    say('Вы очнулись в приёмной заброшенного НИИ. Лифт не работает. Осмотритесь.');
+  }
+
+  S = fresh(); render();
+  say('Вы очнулись в приёмной заброшенного НИИ. Лифт не работает. Осмотритесь.');
+})();
+</script>
+</body>
+</html>
